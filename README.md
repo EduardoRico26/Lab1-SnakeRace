@@ -1,51 +1,51 @@
-# ARSW - Laboratorio #1
+# ARSW - Laboratory #2
 
-## Snake Race Concurrente (Java 21 - Virtual Threads)
+## Concurrent Snake Race (Java 21 - Virtual Threads)
 
-**Autor:** Eduardo Rico Duarte 
+**Author:** Eduardo Rico Duarte 
 
-**Curso:** Arquitecturas de Software (ARSW)
+**Course:** Software Architectures (ARSW)
 
 **Escuela Colombiana de Ingeniería Julio Garavito**
 
 ---
 
-# Introducción
+# Introduction
 
-El objetivo de este laboratorio fue analizar y corregir diferentes problemas relacionados con concurrencia en Java. Para ello se trabajó en dos partes:
+The objective of this laboratory was to analyze and correct different concurrency-related issues in Java. The work was divided into two parts:
 
-1. Implementación de mecanismos de pausa y reanudación utilizando `wait()` y `notifyAll()` en el ejercicio PrimeFinder.
-2. Análisis y mejora del juego Snake Race, identificando posibles condiciones de carrera, regiones críticas y problemas asociados a la ejecución concurrente de múltiples serpientes.
+1. Implementation of pause and resume mechanisms using `wait()` and `notifyAll()` in the PrimeFinder exercise.
+2. Analysis and improvement of the Snake Race game by identifying race conditions, critical sections, and issues associated with the concurrent execution of multiple snakes.
 
 ---
 
-# Parte I - Wait / Notify en PrimeFinder
+# Part I - Wait / Notify in PrimeFinder
 
-## Objetivo
+## Objective
 
-Modificar el programa PrimeFinder para que cada cierto tiempo:
+Modify the PrimeFinder program so that every certain amount of time:
 
-* Se pausen todos los hilos trabajadores.
-* Se muestre la cantidad de números primos encontrados.
-* El programa espere la entrada del usuario.
-* Se reanuden todos los hilos utilizando mecanismos de sincronización basados en monitores.
+* All worker threads are paused.
+* The total number of prime numbers found is displayed.
+* The program waits for user input.
+* All worker threads resume execution using monitor-based synchronization mechanisms.
 
-## Diseño de sincronización
+## Synchronization Design
 
-Se utilizó un único monitor compartido entre todos los hilos trabajadores.
+A single shared monitor was used by all worker threads.
 
-Cuando el hilo de control determina que debe realizar una pausa:
+When the control thread determines that a pause must occur:
 
-1. Cambia una bandera compartida (`paused=true`).
-2. Cada hilo trabajador verifica dicha condición antes de continuar procesando números.
-3. Si la bandera indica pausa, el hilo entra en estado de espera mediante `wait()`.
-4. Cuando el usuario presiona ENTER, el hilo de control cambia la bandera a `false` y ejecuta `notifyAll()` sobre el mismo monitor.
+1. It changes a shared flag (`paused = true`).
+2. Each worker thread checks this condition before continuing its execution.
+3. If the flag indicates a pause, the thread enters the waiting state using `wait()`.
+4. When the user presses ENTER, the control thread changes the flag to `false` and executes `notifyAll()` on the same monitor.
 
-De esta manera no existe espera activa (busy waiting), ya que los hilos permanecen bloqueados sin consumir CPU hasta recibir la señal de reanudación.
+This approach eliminates busy waiting because threads remain blocked without consuming CPU resources until they receive a resume signal.
 
-## Prevención de Lost Wakeups
+## Preventing Lost Wakeups
 
-Para evitar pérdidas de notificaciones se utilizó el patrón recomendado:
+To avoid lost notifications, the recommended monitor pattern was used:
 
 ```java
 synchronized (pauseLock) {
@@ -55,72 +55,72 @@ synchronized (pauseLock) {
 }
 ```
 
-La condición se verifica mediante un ciclo `while`, garantizando que un hilo solo continúe cuando la condición realmente haya cambiado.
+The condition is verified inside a `while` loop, ensuring that a thread only continues when the condition has actually changed.
 
-## Resultado
+## Result
 
-Los hilos pueden pausarse y reanudarse correctamente sin utilizar espera activa y manteniendo sincronización segura mediante monitores de Java.
+Threads can be paused and resumed correctly without busy waiting while maintaining safe synchronization through Java monitors.
 
 ---
 
-# Parte II - Snake Race Concurrente
+# Part II - Snake Race
 
-## 1. Análisis de concurrencia
+## 1. Concurrency Analysis
 
-El juego utiliza concurrencia para otorgar autonomía a cada serpiente.
+The game uses concurrency to provide autonomy to each snake.
 
-En la clase `SnakeApp` se crea un objeto `SnakeRunner` por cada serpiente y cada uno se ejecuta en un hilo virtual independiente de Java 21.
+Inside the `SnakeApp` class, a `SnakeRunner` object is created for each snake, and each one runs inside its own Java 21 virtual thread.
 
-Gracias a esto, cada serpiente se mueve de forma concurrente respecto a las demás.
+This allows every snake to move independently and concurrently with respect to the others.
 
-### Posibles condiciones de carrera identificadas
+### Potential Race Conditions Identified
 
-Se identificó una posible condición de carrera en la clase `Snake`, debido a que:
+A potential race condition was identified in the `Snake` class because:
 
-* Los hilos `SnakeRunner` modifican constantemente la posición de la serpiente.
-* El hilo de la interfaz gráfica consulta simultáneamente dicha información para dibujarla.
+* `SnakeRunner` threads continuously modify the snake's position.
+* The graphical user interface simultaneously reads the same information to render the snake.
 
-Sin protección adecuada podían producirse lecturas inconsistentes del cuerpo de la serpiente.
+Without proper protection, inconsistent reads of the snake's body could occur.
 
-### Colecciones potencialmente inseguras
+### Potentially Unsafe Collections
 
-La estructura más sensible encontrada fue:
+The most sensitive data structure identified was:
 
 ```java
 ArrayDeque<Position>
 ```
 
-utilizada para almacenar el cuerpo de cada serpiente.
+which is used to store the body of each snake.
 
-Esta colección no es thread-safe y requiere sincronización cuando es utilizada por varios hilos.
+This collection is not thread-safe and therefore requires synchronization when accessed by multiple threads.
 
-Las colecciones internas de `Board` (`HashSet` y `HashMap`) ya estaban protegidas mediante sincronización y además retornaban copias defensivas.
+The internal collections inside `Board` (`HashSet` and `HashMap`) were already protected through synchronization and defensive copies.
 
-### Espera activa
+### Busy Waiting
 
-No se encontraron ciclos de espera activa dentro del juego.
+No busy-waiting loops were found in the game.
 
-La ejecución de las serpientes se controla mediante:
+Snake execution is controlled through:
 
 ```java
 Thread.sleep(...)
 ```
 
-por lo que los hilos no consumen CPU innecesariamente mientras esperan.
+which prevents unnecessary CPU consumption while threads are waiting.
 
 ---
 
-## 2. Correcciones mínimas y regiones críticas
+## 2. Minimal Corrections and Critical Sections
 
-### Problema identificado
+### Problem Identified
 
-El principal problema de concurrencia se encontraba en la clase `Snake`.
+The main concurrency issue was located in the `Snake` class.
 
-El cuerpo de la serpiente podía ser leído por la interfaz gráfica al mismo tiempo que era modificado por el hilo encargado de moverla.
+The snake body could be read by the graphical interface while simultaneously being modified by the thread responsible for moving it.
 
-### Solución implementada
+### Implemented Solution
 
-Se sincronizaron únicamente los métodos que acceden o modifican el estado interno de la serpiente:
+Only the methods that access or modify the internal state of a snake were synchronized:
 
 ```java
 head()
@@ -130,7 +130,7 @@ turn()
 length()
 ```
 
-Ejemplo:
+Example:
 
 ```java
 public synchronized Deque<Position> snapshot() {
@@ -138,103 +138,102 @@ public synchronized Deque<Position> snapshot() {
 }
 ```
 
-### Riesgo resuelto
+### Risk Addressed
 
-La sincronización evita:
+Synchronization prevents:
 
-* Lecturas inconsistentes.
-* Estados intermedios del cuerpo.
-* Posibles excepciones por modificaciones concurrentes.
+* Inconsistent reads.
+* Intermediate body states.
+* Potential issues caused by concurrent modifications.
 
-### Justificación del alcance mínimo
+### Justification for Minimal Scope
 
-No se bloquearon componentes completos del juego.
+The entire game was not locked.
 
-Únicamente se protegió el estado interno de cada serpiente, manteniendo el nivel de paralelismo más alto posible.
+Only the internal state of each snake was protected, preserving the highest possible degree of parallelism.
 
 ---
 
-## Funcionalidad adicional implementada
+## Additional Functionality Implemented
 
-Para poder cumplir los requisitos de los puntos posteriores fue necesario incorporar una nueva funcionalidad: la muerte de las serpientes.
+To satisfy the requirements of the following sections, it was necessary to introduce a new feature: snake death.
 
-En la versión original, una serpiente que chocaba contra un obstáculo simplemente cambiaba de dirección.
+In the original version of the game, when a snake collided with an obstacle it simply changed direction and continued moving.
 
-Se modificó el comportamiento para que:
+The behavior was modified so that a snake:
 
-* Muera al colisionar contra un obstáculo.
-* Muera al colisionar contra otra serpiente.
-* Desaparezca visualmente del tablero.
+* Dies when colliding with an obstacle.
+* Dies when colliding with another snake.
+* Disappears from the board after death.
 
-Para ello se agregaron los atributos:
+To support this functionality, the following attributes were added:
 
 ```java
 private volatile boolean alive;
 private volatile long deathTimeMs;
 ```
 
-y el método:
+along with the method:
 
 ```java
 public synchronized void die()
 ```
 
-que registra el instante exacto de la muerte.
+which records the exact moment of death.
 
 ---
+## 3. Safe Execution Control (UI)
 
-## 3. Control de ejecución seguro (UI)
+### State Machine for the User Interface
 
-### Máquina de estados de la interfaz
+The original button was replaced with a state-driven workflow controlled by the variable `uiState`.
 
-El botón original fue reemplazado por un flujo de estados controlado mediante `uiState`.
+| State | Button Text | Action              |
+| ----- | ----------- | ------------------- |
+| 0     | Start       | Starts the game     |
+| 1     | Pause       | Pauses the game     |
+| 2     | Resume      | Continues execution |
 
-| Estado | Botón    | Acción                |
-| ------ | -------- | --------------------- |
-| 0      | Iniciar  | Inicia el juego       |
-| 1      | Pausar   | Pausa el juego        |
-| 2      | Reanudar | Continúa la ejecución |
+This prevents invalid transitions and simplifies interface control.
 
-Esto evita transiciones inválidas y simplifica el control de la interfaz.
+### Statistics Displayed During Pause
 
-### Estadísticas durante la pausa
+When the game is paused, the following information is displayed:
 
-Al pausar el juego se muestra:
+* The longest living snake.
+* The worst snake, defined as the first snake that died.
 
-* La serpiente viva más larga.
-* La primera serpiente en morir.
+To make identification easier, each snake was assigned a fixed color:
 
-Para identificar fácilmente las serpientes se asignó un color fijo a cada una:
-
-* Verde
-* Azul
+* Green
+* Blue
 * Magenta
-* Dorada
-* Roja
+* Gold
+* Red
 
-La serpiente viva más larga se calcula utilizando:
+The longest living snake is calculated using:
 
-```java
+```java id="7b5f2r"
 Comparator.comparingInt(Snake::length)
 ```
 
-La primera serpiente en morir se calcula utilizando:
+The first snake to die is calculated using:
 
-```java
+```java id="a1d4rt"
 Comparator.comparingLong(Snake::deathTimeMs)
 ```
 
-### Consistencia visual (Sin Tearing)
+### Visual Consistency (No Tearing)
 
-Se buscó garantizar que la información mostrada al pausar corresponda exactamente al estado visible en pantalla.
+One of the requirements was to ensure that the information displayed when pausing corresponds exactly to the state visible on the screen.
 
-Para ello:
+To achieve this:
 
-1. `GameClock` utiliza un `AtomicReference<GameState>`.
-2. No se generan nuevos repaints cuando el estado es `PAUSED`.
-3. Se utiliza `SwingUtilities.invokeLater()` para ejecutar el último repaint y posteriormente calcular las estadísticas.
+1. `GameClock` uses an `AtomicReference<GameState>`.
+2. No new repaint operations are scheduled while the game is in the `PAUSED` state.
+3. `SwingUtilities.invokeLater()` is used to execute the final repaint and then calculate the statistics.
 
-```java
+```java id="p9x4cs"
 clock.pause();
 
 SwingUtilities.invokeLater(() -> {
@@ -243,116 +242,119 @@ SwingUtilities.invokeLater(() -> {
 });
 ```
 
-De esta manera el frame congelado y las estadísticas pertenecen al mismo estado consistente del juego.
+This guarantees that the frozen frame and the displayed statistics belong to the same consistent game state.
 
 ---
 
-## 4. Robustez bajo carga
+## 4. Robustness Under Load
 
-Las pruebas se realizaron aumentando el número de serpientes mediante:
+Tests were executed using a high number of snakes:
 
-```bash
+```bash id="m4j5qd"
 mvn -q -DskipTests exec:java -Dsnakes=20
 ```
 
 ### ConcurrentModificationException
 
-Los métodos de consulta de `Board` retornan copias defensivas:
+The getter methods of `Board` return defensive copies:
 
-```java
+```java id="v8s6pl"
 return new HashSet<>(mice);
 return new HashMap<>(teleports);
 ```
 
-La interfaz gráfica nunca itera directamente sobre las estructuras compartidas.
+The graphical interface never iterates directly over shared collections.
 
-Resultado:
+**Result:**
 
-* No se presentaron `ConcurrentModificationException`.
+* No `ConcurrentModificationException` occurred.
 
-### Lecturas inconsistentes
+### Inconsistent Reads
 
-Todos los accesos al estado interno de una serpiente se encuentran sincronizados.
+All accesses to the internal state of a snake are synchronized.
 
-Resultado:
+**Result:**
 
-* No se observaron inconsistencias visuales.
+* No visual inconsistencies were observed.
 
 ### Deadlocks
 
-El orden de adquisición de locks es siempre consistente:
+The lock acquisition order is always consistent:
 
-```text
+```text id="8nq3mz"
 Board -> Snake
 ```
 
-Nunca ocurre:
+The following order never occurs:
 
-```text
+```text id="m2t8ra"
 Snake -> Board
 ```
 
-Resultado:
+**Result:**
 
-* No se detectaron deadlocks.
+* No deadlocks were detected.
 
-### Turbo y Teletransportadores
+### Turbo and Teleporters
 
-La lógica de movimiento se encuentra protegida dentro de:
+The movement logic is protected inside:
 
-```java
+```java id="z5w1cx"
 public synchronized MoveResult step(...)
 ```
 
-Solo una serpiente puede modificar el tablero a la vez.
+Only one snake can modify the board at a time.
 
-Resultado:
+**Result:**
 
-* No se presentaron carreras relacionadas con turbo o teletransportadores.
+* No race conditions involving turbo items or teleporters were observed.
 
-### Aparición de elementos sobre serpientes
+### Item Generation on Snake Bodies
 
-Se identificó un problema adicional cuando el número de serpientes era elevado.
+An additional issue was identified when running the game with a large number of snakes.
 
-La implementación original podía generar ratones, obstáculos o turbo sobre cuerpos ya ocupados.
+The original implementation could generate mice, obstacles, or turbo items on cells already occupied by snake bodies.
 
-Se modificó `randomEmpty()` para excluir todas las posiciones ocupadas por serpientes vivas.
+The method `randomEmpty()` was modified to exclude all positions occupied by living snakes.
 
-Resultado:
+**Result:**
 
-* Los elementos siempre aparecen en celdas libres.
-
----
-
-# Resultados obtenidos
-
-Después de las modificaciones realizadas, el juego:
-
-* Ejecuta múltiples serpientes concurrentemente utilizando Virtual Threads.
-* No presenta condiciones de carrera detectadas.
-* No presenta `ConcurrentModificationException`.
-* No presenta deadlocks.
-* Permite iniciar, pausar y reanudar de forma consistente.
-* Muestra estadísticas correctas durante la pausa.
-* Soporta cargas altas (`N >= 20`) sin fallos de concurrencia.
+* New items always appear on valid free cells.
 
 ---
 
-# Conclusiones
+# Results
 
-* La sincronización debe aplicarse únicamente sobre las regiones críticas estrictamente necesarias para no afectar el paralelismo.
-* El uso de métodos sincronizados en `Snake` permitió proteger el estado compartido sin introducir bloqueos excesivos.
-* Las copias defensivas son una estrategia efectiva para evitar modificaciones concurrentes durante la renderización.
-* La coordinación entre el reloj del juego y la interfaz gráfica permitió obtener una pausa consistente visualmente.
-* Las pruebas con un número elevado de serpientes confirmaron la robustez de la solución implementada.
+After the implemented modifications, the game:
+
+* Executes multiple snakes concurrently using Java 21 Virtual Threads.
+* Does not present detected race conditions.
+* Does not produce `ConcurrentModificationException`.
+* Does not generate deadlocks.
+* Allows starting, pausing, and resuming consistently.
+* Displays correct statistics during pause.
+* Supports high loads (`N >= 20`) without concurrency failures.
+
+---
+
+# Conclusions
+
+* Synchronization should be applied only to the strictly necessary critical sections in order to preserve parallelism.
+* Synchronizing the methods of the `Snake` class protected the shared state without introducing excessive locking.
+* Defensive copies proved to be an effective strategy for avoiding concurrent modification problems during rendering.
+* Proper coordination between the game clock and the graphical interface made it possible to achieve a visually consistent pause mechanism.
+* Testing with a high number of snakes confirmed the robustness and stability of the implemented solution under concurrent execution.
+
+---
 
 # References
 
 1. Benavides Navarro, L. D., & Gualtero Martínez, R. H. (2024). *Concurrency and Threads in Java and Go* [Course slides].
 
-2. OpenAI. (2026). *ChatGPT* (GPT-5.5 version) [Large Language Model]. https://chatgpt.com/ (Used primarily as a support tool.)
+2. OpenAI. (2026). *ChatGPT (GPT-5.5 version) [Large Language Model]*. https://chatgpt.com/ (Used primarily as a support tool).
 
-3. Oracle. (2024). Java tutorials: Concurrency. Oracle Documentation. https://docs.oracle.com/javase/tutorial/essential/concurrency/
+3. Oracle. (2024). *Java tutorials: Concurrency*. Oracle Documentation. https://docs.oracle.com/javase/tutorial/essential/concurrency/
 
-4. OpenJDK. (2024). Project Loom: Virtual threads and structured concurrency. OpenJDK. https://openjdk.org/projects/loom/
+4. OpenJDK. (2024). *Project Loom: Virtual threads and structured concurrency*. OpenJDK. https://openjdk.org/projects/loom/
+
 
