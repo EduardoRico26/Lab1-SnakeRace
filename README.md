@@ -346,6 +346,60 @@ After the implemented modifications, the game:
 * Testing with a high number of snakes confirmed the robustness and stability of the implemented solution under concurrent execution.
 
 ---
+# Appendices
+
+## PART I
+
+### Evidence 1
+
+![Evidence 1](Imagenes/Ev1.png)
+
+---
+
+### Evidence 2
+
+![Evidence 2](Imagenes/Ev2.png)
+
+---
+
+### Evidence 3
+
+![Evidence 3](Imagenes/Ev3.png)
+
+---
+
+## PART II
+
+### Evidence 4
+
+![Evidence 4](Imagenes/Ev4.png)
+
+---
+
+### Evidence 5
+
+![Evidence 5](Imagenes/Ev5.png)
+
+---
+
+### Evidence 6
+
+![Evidence 6](Imagenes/Ev6.png)
+
+---
+
+
+### Evidence 7
+
+![Evidence 7](Imagenes/Ev7.png)
+
+---
+
+### Evidence 8
+
+![Evidence 8](Imagenes/Ev8.png)
+
+---
 
 # References
 
